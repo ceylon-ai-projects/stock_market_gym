@@ -6,8 +6,13 @@ import random
 class Agent():
 
     def __init__(self, name, state_size=None, is_eval=False,
+                 replay_size=100,
                  max_memory_length=int(1e3),
-                 gamma=0.95, epsilon=1, epsilon_min=1e-4, epsilon_decay=0.9, action_size=3, batch_size=72):
+                 gamma=0.95, epsilon=1, epsilon_min=1e-4,
+                 epsilon_decay=0.9,
+                 action_size=3,
+                 batch_size=72):
+        self.replay_size = replay_size
         self.name = name
         self.is_eval = is_eval
         self.state_size = state_size
@@ -41,8 +46,13 @@ class Agent():
 
     def memorize(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
+        if len(self.memory) >= self.replay_size:
+            self.__exp_play()
+            memory_forget = random.randint(0, self.replay_size - 1)
+            for i in range(memory_forget):
+                self.memory.popleft()
 
-    def exp_play(self):
+    def __exp_play(self):
         # print("play_on_batch....")
         mini_batch = []
         l = len(self.memory)
@@ -53,17 +63,6 @@ class Agent():
         # self.memory.clear()
 
         for state, action, reward, next_state, done in mini_batch:
-            target = reward
-            # print(next_state.shape)
-            next_state = np.reshape(next_state, (1, next_state.shape[1],))
-            if not done:
-                target = reward + self.gamma * np.amax(self.model.predict(next_state)[0])
-
-            state = np.reshape(state, (1, state.shape[1],))
-
-            target_f = self.model.predict(state)
-
-            target_f[0][action] = target
-            self.train(state, target_f)
+            print(state[:, 1:], action, reward, next_state[:, 1:], done)
 
         self.update_kb()

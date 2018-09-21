@@ -25,10 +25,12 @@ class MarketEnv():
         self.__data__set__ = deque()
 
     def feed_data(self, data, last=False):
+
+        # Market in action with enough data
         if len(self.__data__set__) >= self.env_memory_length:
             __previous_state__ = copy.deepcopy(self.__current_state__)
             # print(__previous_state__)
-            self.__current_state__ = np.array(list(self.__data__set__))
+            self.__current_state__ = self.agent.pre_process(list(self.__data__set__))  # Preprocess Data Window
             self.__process_state(__previous_state__, self.__current_state__, done=last)
 
             for i in range(self.env_play_speed):
@@ -47,6 +49,10 @@ class MarketEnv():
 
     def reset(self):
         self.__current_state__ = []
+        self.__previous_state__ = []
+        self.__last_reward__ = []
+        self.__last_action__ = []
+        self.__data__set__ = deque()
 
     def __process_state(self, __previous_state__, __current_state__, done):
         self.__reward_func__(__current_state__,
@@ -60,12 +66,14 @@ class MarketEnv():
         self.agent.memorize(self.__current_state__, self.__last_action__,
                             self.__last_reward__, [], True)
 
+    def summary(self):
+        print(self.agent.summary())
+        print("Data Steps {}".format(self.__market_current_step__))
+
 
 '''
 
 '''
-
-
 class StockMarketCSV(MarketEnv):
     __current_index = 0
 

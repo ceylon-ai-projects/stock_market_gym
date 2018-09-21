@@ -9,7 +9,10 @@ class MarketEnv():
     __market_current_step__ = 0
     __agents = []
 
-    def __init__(self, pair_name, freq, env_memory_length=3, env_play_speed=1, agent=None):
+    def __init__(self, pair_name, freq, env_memory_length=3, env_play_speed=1,
+                 action_size=3,
+                 agent=None):
+        self.__action_size__ = action_size
         self.agent = agent
         self.env_play_speed = env_play_speed
         self.env_memory_length = env_memory_length
@@ -24,7 +27,7 @@ class MarketEnv():
     def feed_data(self, data, last=False):
         if len(self.__data__set__) >= self.env_memory_length:
             __previous_state__ = copy.deepcopy(self.__current_state__)
-            print(__previous_state__)
+            # print(__previous_state__)
             self.__current_state__ = np.array(list(self.__data__set__))
             self.__process_state(__previous_state__, self.__current_state__, done=last)
 
@@ -53,6 +56,10 @@ class MarketEnv():
         self.agent.memorize(__previous_state__, self.__last_action__,
                             self.__last_reward__, __current_state__, done)
 
+    def finish(self):
+        self.agent.memorize(self.__current_state__, self.__last_action__,
+                            self.__last_reward__, [], True)
+
 
 '''
 
@@ -63,19 +70,21 @@ class StockMarketCSV(MarketEnv):
     __current_index = 0
 
     def __init__(self, pair_name, freq, window_length=1,
-                 agent=None, data_pre_processor=None, env_memory_length=3,
+                 action_size=3, agent=None, data_pre_processor=None, env_memory_length=3,
                  env_play_speed=1):
         super().__init__(pair_name, freq,
                          agent=agent,
+                         action_size=action_size,
                          env_memory_length=env_memory_length, env_play_speed=env_play_speed)
         self.window_length = window_length
         self.data_pre_processor = data_pre_processor
 
     def __reward_func__(self, state, pre_state, action):
         if pre_state is not None and len(pre_state) > 0:
-            print("----PRE-STATE----")
-            print(pre_state[:, :1])
-            print("----STATE----")
-            print(state[:, :1])
-            print("----ACTION----")
-            print(action)
+            # print("----PRE-STATE----")
+            # print(pre_state[:, :1])
+            # print("----STATE----")
+            # print(state[:, :1])
+            # print("----ACTION----")
+            # print(action)
+            self.__last_reward__ = np.random.rand(self.__action_size__)

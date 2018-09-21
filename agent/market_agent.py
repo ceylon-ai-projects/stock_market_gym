@@ -46,9 +46,10 @@ class Agent():
 
     def memorize(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
-        if len(self.memory) >= self.replay_size:
+        if len(self.memory) >= self.replay_size or done:
             self.__exp_play()
             memory_forget = random.randint(0, self.replay_size - 1)
+            memory_forget = 1 if done else memory_forget
             for i in range(memory_forget):
                 self.memory.popleft()
 
@@ -63,6 +64,9 @@ class Agent():
         # self.memory.clear()
 
         for state, action, reward, next_state, done in mini_batch:
-            print(state[:, 1:], action, reward, next_state[:, 1:], done)
+            print("--Mini Batch--")
+            print(state, action, reward, next_state, done)
+            if done:
+                print("Last Steps")
 
         self.update_kb()

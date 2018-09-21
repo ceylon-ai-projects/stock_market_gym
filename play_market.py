@@ -28,9 +28,11 @@ class CSVDataStream(Observer):
         print("<<<<<<>>>>>>>>>>")
 
     def on_completed(self):
+        market.finish()
         print("<<<<<<-COMPLETED->>>>>")
 
 
 csv_streamer = CSVDataStream()
 for index, data_row in data_csv.iterrows():
     csv_streamer.on_next(data_row.values)
+csv_streamer.on_completed()

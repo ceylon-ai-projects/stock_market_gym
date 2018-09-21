@@ -5,6 +5,7 @@ data/cloud
 
 .idea/
 config/.back
+config/fireconfig.json
 git
 
 

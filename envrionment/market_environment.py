@@ -1,19 +1,11 @@
 import copy
 from collections import deque
 
-import numpy as np
-from sklearn.metrics import r2_score
+
 # from sklearn.preprocessing import normalize
 
 
-def r_score(y_true, y_pred, sample_weight=None, multioutput=None):
-    r2 = r2_score(y_true, y_pred, sample_weight=sample_weight,
-                  multioutput=multioutput)
-    r = (np.sign(r2) * np.sqrt(np.abs(r2)))
-    if r <= -1:
-        return -1
-    else:
-        return r
+
 
 
 class MarketEnv():
@@ -23,6 +15,8 @@ class MarketEnv():
 
     def __init__(self, pair_name, freq, env_memory_length=3, env_play_speed=1,
                  action_size=3,
+                 window_length=1,
+                 data_pre_processor=None,
                  reward_player=None,
                  agent=None):
         self.reward_player = reward_player
@@ -37,6 +31,12 @@ class MarketEnv():
         self.__last_reward__ = []
         self.__last_action__ = []
         self.__data__set__ = deque()
+        self.window_length = window_length
+        self.data_pre_processor = data_pre_processor
+        self.__after__init__()
+
+    def __after__init__(self):
+        pass
 
     def feed_data(self, data, last=False):
 
@@ -91,40 +91,4 @@ class MarketEnv():
 '''
 
 
-class StockMarketCSV(MarketEnv):
-    __current_index = 0
 
-    def __init__(self, pair_name, freq, window_length=1,
-                 reward_player=None,
-                 action_size=3, agent=None, data_pre_processor=None, env_memory_length=3,
-                 env_play_speed=1):
-        super().__init__(pair_name, freq,
-                         agent=agent,
-                         reward_player=reward_player,
-                         action_size=action_size,
-                         env_memory_length=env_memory_length, env_play_speed=env_play_speed)
-        self.window_length = window_length
-        self.data_pre_processor = data_pre_processor
-
-    calculation_reward = 0
-
-    def __reward_func__(self, state, pre_state, action):
-        if pre_state is not None and len(pre_state) > 0:
-            # print(state)
-            # print(pre_state)
-            # print(pre_state[-1:])
-            # print(state[-self.__action_size__:])
-            # print(action)
-            true_action = (state[-self.__action_size__:] - pre_state[-1:]) / pre_state[-1:]
-            true_action = np.reshape(true_action, (-1, 1))
-            # true_action = normalize(true_action)
-
-            reward_value = r_score(true_action, action)
-            if self.reward_player is not None and np.random.uniform(0, 1) > 0.1:
-                print(action)
-                self.reward_player.play(self.calculation_reward, reward_value)
-
-
-            self.calculation_reward += 1
-
-            self.__last_reward__ = reward_value

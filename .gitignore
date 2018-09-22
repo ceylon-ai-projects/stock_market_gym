@@ -1,4 +1,6 @@
 # Data Exclued
+model/
+
 data/store/
 data/live/
 data/cloud

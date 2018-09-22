@@ -3,6 +3,9 @@ import numpy as np
 import random
 
 
+# from sklearn.preprocessing import normalize
+
+
 class Agent():
     train_itter_number = 0
     train_update_terms = 0
@@ -63,8 +66,17 @@ class Agent():
     def pre_process(self, data):
         return data
 
-    def proactive(self, state, reward):
-        return np.random.rand(self.action_size)
+    def act(self, state):
+        if np.random.rand() <= self.epsilon:
+            # The agent acts randomly
+            return np.random.uniform(0, 5, size=self.action_size)
+            # Predict the reward value based on the given state
+        act_values = self.proactive(state)
+        # Pick the action based on the predicted reward
+        return act_values[0]
+
+    def proactive(self, state):
+        return np.random.uniform(0, 5, size=self.action_size)
 
     def train(self, train_x, train_y):
         # print("Train")
@@ -75,10 +87,10 @@ class Agent():
         self.train_update_terms += 1
 
     def memorize(self, state, action, reward, next_state, done):
+        # print(action)
         self.memory.append((state, action, reward, next_state, done))
         if len(self.memory) >= self.replay_size or done:
             self.__exp_play()
-
             # Forgeting Events#
             memory_forget = random.randint(0, self.train_alpha_value)
             memory_forget = 1 if done else memory_forget
@@ -99,25 +111,41 @@ class Agent():
         train_y = []
         for state, action, reward, next_state, done in mini_batch:
             train_x.append(state)
-            train_y.append(action)
+
+            target = reward + self.gamma * \
+                     np.amax(self.proactive(next_state))
+            # target = np.full(action.shape, target)
+            # target = np.reshape(target, (-1, 1))
+            # target = normalize(target)
+            target = np.multiply(action, target)
+            target = np.reshape(target, (-1, 1))
+            # target = normalize(target)
+            # print("----Target----")
+            # print(target)
+            # print(action)
+            # print("-----")
+
+            train_y.append(target)
 
             if random.uniform(0, 1) <= self.random_print_rate:
                 self.__print__(state, action, reward, next_state, done)
 
             if done:
+                self.update_kb()
                 print("Last Steps")
                 print(self.train_itter_number, self.train_update_terms)
 
         self.train(np.array(train_x), np.array(train_y))
         self.train_itter_number += 1
 
-        self.update_kb()
-        self.train_update_terms += 1
+        if self.train_itter_number % 10 == 0:
+            self.update_kb()
+            self.train_update_terms += 1
 
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
-        self.update_kb()
+        # self.update_kb()
 
     def print_random_data(self, data):
         if random.uniform(0, 1) <= self.random_print_rate:
@@ -132,6 +160,7 @@ class Agent():
         print("Reward ", reward)
         print("Next State ", next_state)
         print("Done ", done)
+        self.summary()
         print("<<<<<<<<<<<<END>>>>>>>>>>>>>")
         self.__print_itr += 1
 

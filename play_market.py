@@ -1,16 +1,14 @@
 import copy
 import os
-import random
 import time
-
-from keras.engine.saving import load_model
-from ta import *
-
-from data.data_manager import get_data
-from envrionment.market_env import Agent, MarketEnvironment, DataAgent
 
 import matplotlib.pyplot as plt
 
+from ta import *
+
+from agent.env_agents import Agent
+from data.data_manager import get_data
+from envrionment.market_env import MarketEnvironment, DataAgent
 from pattern_encoder import encode_column_to_range_index, decode_column_to_int
 
 dirname = os.path.dirname(__file__)
@@ -25,7 +23,7 @@ interval = 1
 future_state = 4
 state_size = 3
 action_size = 3
-considering_steps = 7
+considering_steps = 12
 
 rsi_range = range(14, 15)
 tsi_range = range(14, 15)
@@ -34,39 +32,64 @@ aroon_range = range(25, 26)
 dpo_range = range(20, 26)
 
 data_csv = get_data(pair_name, interval)
+data_csv['Ct'] = data_csv.Close.shift(considering_steps)
+data_csv.dropna(inplace=True)
 print(data_csv.head())
 df = pd.DataFrame()
 close_s = data_csv.Close
 df['C'] = close_s
 
+
+def process_change_series(close_s, step_back_s):
+    series = (step_back_s - close_s) * 100 / close_s
+    # print(series[-1:])
+    return series.apply(encode_column_to_range_index)
+
+
 for rsi_i in rsi_range:
-    df['RSI({})'.format(rsi_i)] = rsi(data_csv.Close)
+    df['RSI({})'.format(rsi_i)] = rsi(close_s)
 
 for atr_i in tsi_range:
-    df['ATR({})'.format(atr_i)] = average_true_range(data_csv.High, data_csv.Low, data_csv.Close, n=atr_i)
+    df['ATR({})'.format(atr_i)] = average_true_range(data_csv.High, data_csv.Low, close_s, n=atr_i)
 
 for ema_i in emi_range:
-    df['exp({})'.format(ema_i)] = ema(data_csv.Close, ema_i)
+    df['exp({})'.format(ema_i)] = ema(close_s, ema_i)
 
 for aron_i in aroon_range:
-    df['arn_d({})'.format(aron_i)] = aroon_down(data_csv.Close, n=aron_i)
-    df['arn_u({})'.format(aron_i)] = aroon_up(data_csv.Close, n=aron_i)
+    df['arn_d({})'.format(aron_i)] = aroon_down(close_s, n=aron_i)
+    df['arn_u({})'.format(aron_i)] = aroon_up(close_s, n=aron_i)
 
 for dpo_i in dpo_range:
     df['dpo({})'.format(dpo_i)] = ema(data_csv.Close, dpo_i)
 
 # Pattern
-df['P'] = pd.Series(np.full(df['C'].values.shape, ''))
-for back_step in range(-considering_steps, 0):
-    series = (close_s.shift(-back_step) - close_s) * 100 / close_s
-    series = series.apply(encode_column_to_range_index)
-    df['P'] = df['P'] + series
-df.dropna(inplace=True)
-df['P'] = df.P.apply(decode_column_to_int)
+series = (close_s.shift(1) - close_s) * 100 / close_s
+series = series.apply(encode_column_to_range_index)
+df['P1'] = series
+df['P2'] = series
+df['P3'] = series
+#
+for back_step in range(2, (considering_steps - 1) + 1):
+    df['P1'] += process_change_series(close_s, close_s.shift(back_step))
+#
+for back_step in range(2, 5):
+    df['P2'] += process_change_series(close_s, close_s.shift(back_step))
 
+#
+for back_step in range(2, 4):
+    df['P3'] += process_change_series(close_s, close_s.shift(back_step))
+
+# print(df['P'])
+df.dropna(inplace=True)
+# print(df.values[-10:, -4:])
+df['P1'] = df.P1.apply(decode_column_to_int)
+df['P2'] = df.P2.apply(decode_column_to_int)
+df['P3'] = df.P3.apply(decode_column_to_int)
+# print(df.values[-10:, -4:])
 state_size = df.shape[1]
 
-print(df.describe())
+print(df.tail())
+print(data_csv.tail())
 
 
 class CsvDataAgent(DataAgent):
@@ -118,7 +141,9 @@ class MarketAgent(Agent):
 
     def after_init(self):
         # self.build_model((1, self.state_size))
-        self.model = load_model(model_path + "fx_agent_rl__0")
+        from keras.engine.saving import load_model
+
+        self.model = load_model(model_path + "fx_agent_rl__4")
 
     def update_policy(self, action, reward, state, state_next):
         target = np.zeros((self.action_size))
@@ -133,22 +158,16 @@ class MarketAgent(Agent):
         train_y = []
         for state, next_state, action, reward in memory:
             train_x.append(state)
-            # print(state)
             target = self.update_policy(action, reward, state, next_state)
-            # print(state, target)
             train_y.append(target)
 
         train_x = np.array(train_x)
         train_y = np.array(train_y)
         train_x = np.reshape(train_x, (train_x.shape[0], 1, self.state_size))
-        # print(train_y)
-        # print(train_y.shape)
         self.model.fit(train_x, train_y, verbose=0, batch_size=32)
 
-        print(self.train_itr)
-
         if self.train_itr % 5 == 0:
-            prefix = self.train_itr % 5
+            prefix = self.itr_index % 5
             self.model.save(model_path + '' + self.name + "_{}".format(prefix))
 
     def predict_action(self, state):
@@ -168,7 +187,7 @@ def dif_to_action(diff):
 
 
 class EURUSDMarket(MarketEnvironment):
-    reward_player = None  # RewardPlayer()
+    reward_player = RewardPlayer()
 
     reward_index = 0
     reward_cum_index = 1
@@ -197,7 +216,12 @@ class EURUSDMarket(MarketEnvironment):
 
 
 data_agent = CsvDataAgent()
-prediction_agent = MarketAgent("fx_agent_rl_", state_size=state_size, max_mem_len=2.5e3, forget_rate=0.6)
+prediction_agent = MarketAgent("fx_agent_rl_",
+                               state_size=state_size,
+                               gamma=0.95,
+                               epsilon_decay=0.9,
+                               max_mem_len=5e2,
+                               forget_rate=0.2)
 
 market_env = EURUSDMarket(agent=prediction_agent, data_agent=data_agent)
 while market_env.stop_command is not True:

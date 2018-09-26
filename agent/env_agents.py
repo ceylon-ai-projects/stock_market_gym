@@ -5,16 +5,21 @@ import numpy as np
 
 class Agent():
     train_itr = 0
+    itr_index = 0
 
     def __init__(self,
                  name,
                  max_mem_len=1e3,
-                 gamma=1e-2,
+                 gamma=0.5,
                  state_size=1,
                  action_size=3,
                  forget_rate=0.03,
-                 epsilon=1e-4,
+                 epsilon=1,
+                 epsilon_min=1e-4,
+                 epsilon_decay=0.9,
                  train_agent=True):
+        self.epsilon_decay = epsilon_decay
+        self.epsilon_min = epsilon_min
         self.name = name
         self.state_size = state_size
         self.gamma = gamma
@@ -40,6 +45,13 @@ class Agent():
     def train(self):
         pass
 
+    def __train(self):
+        self.train()
+        self.train_itr += 1
+        # Train Decay
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
+
     def memorise(self, event):
         # print(event)
         # Memories Event
@@ -49,13 +61,12 @@ class Agent():
         if len(self.__memory__) == self.__memory__.maxlen:
             if self.train_agent:
                 # Train
-                self.train()
-                self.train_itr += 1
+                self.__train()
 
             # Forget Memory events
             for f in range(int(len(self.__memory__) * self.forget_rate)):
                 self.__memory__.popleft()
-
+        self.itr_index += 1
         # if random.random() > (1 - self.forget_rate):
         #     for f in range(int(len(self.__memory__) * self.forget_rate)):
         #         self.__memory__.popleft()

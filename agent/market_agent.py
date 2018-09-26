@@ -12,6 +12,7 @@ class Agent():
     __print_itr = 0  # Print Iteration Count
 
     def __init__(self, name, state_size=None, is_eval=False,
+                 future_state=4,
                  replay_size=100,
                  train_alpha_value=4,
                  max_memory_length=int(1e3),
@@ -19,6 +20,7 @@ class Agent():
                  epsilon_decay=0.9,
                  action_size=3,
                  batch_size=72, random_print_rate=10):
+        self.future_state = future_state
         self.random_print_rate = random_print_rate
         self.train_alpha_value = train_alpha_value
         self.replay_size = replay_size
@@ -67,13 +69,7 @@ class Agent():
         return data
 
     def act(self, state):
-        if np.random.rand() <= self.epsilon:
-            # The agent acts randomly
-            return np.random.uniform(0, 5, size=self.action_size)
-            # Predict the reward value based on the given state
-        act_values = self.proactive(state)
-        # Pick the action based on the predicted reward
-        return act_values[0]
+        pass
 
     def proactive(self, state):
         return np.random.uniform(0, 5, size=self.action_size)
@@ -87,7 +83,7 @@ class Agent():
         self.train_update_terms += 1
 
     def memorize(self, state, action, reward, next_state, done):
-        # print(action)
+        # print(state, action, reward, next_state, done)
         self.memory.append((state, action, reward, next_state, done))
         if len(self.memory) >= self.replay_size or done:
             self.__exp_play()
@@ -110,20 +106,11 @@ class Agent():
         train_x = []
         train_y = []
         for state, action, reward, next_state, done in mini_batch:
-            train_x.append(state)
+            # print(reward is None)
+            # print(len(reward)==0)
+            train_x.append(state[0])
 
-            target = reward + self.gamma * \
-                     np.amax(self.proactive(next_state))
-            # target = np.full(action.shape, target)
-            # target = np.reshape(target, (-1, 1))
-            # target = normalize(target)
-            target = np.multiply(action, target)
-            target = np.reshape(target, (-1, 1))
-            # target = normalize(target)
-            # print("----Target----")
-            # print(target)
-            # print(action)
-            # print("-----")
+            target = self.__policy_update__(state, action, reward, next_state, done)
 
             train_y.append(target)
 
@@ -168,3 +155,6 @@ class Agent():
         print(">>>>>SUMMARY<<<<<<")
         print("Train itr- {}".format(self.train_itter_number))
         print("Train update term- {}".format(self.train_update_terms))
+
+    def __policy_update__(self, state, action, reward, next_state, done):
+        pass

@@ -5,9 +5,6 @@ from collections import deque
 # from sklearn.preprocessing import normalize
 
 
-
-
-
 class MarketEnv():
     __current_state__ = None
     __market_current_step__ = 0
@@ -69,26 +66,25 @@ class MarketEnv():
         self.__data__set__ = deque()
 
     def __process_state(self, __previous_state__, __current_state__, done):
-        self.__reward_func__(__current_state__,
-                             pre_state=__previous_state__, action=self.__last_action__)
+        self.__last_reward__ = self.__reward_func__(__current_state__,
+                                                    pre_state=__previous_state__, action=self.__last_action__)
         self.__last_action__ = self.agent.act(self.__current_state__)
 
         self.agent.memorize(__previous_state__, self.__last_action__,
                             self.__last_reward__, __current_state__, done)
 
-    def finish(self):
-        # self.agent.memorize(self.__current_state__, self.__last_action__,
-        #                     self.__last_reward__, [], True)
-        pass
 
-    def summary(self):
-        print(self.agent.summary())
-        print("Data Steps {}".format(self.__market_current_step__))
+def finish(self):
+    # self.agent.memorize(self.__current_state__, self.__last_action__,
+    #                     self.__last_reward__, [], True)
+    pass
+
+
+def summary(self):
+    print(self.agent.summary())
+    print("Data Steps {}".format(self.__market_current_step__))
 
 
 '''
 
 '''
-
-
-

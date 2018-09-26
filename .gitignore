@@ -4,7 +4,7 @@ model/
 data/store/
 data/live/
 data/cloud
-data/live_data.py
+data/live_data_no_public.py
 .idea/
 config/.back
 config/fireconfig.json

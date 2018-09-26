@@ -95,7 +95,7 @@ def get_live_data(pair_name, call_back, interval="1T"):
         except Exception as e:
             print(e)
 
-    apiUrl = "wss://ws.binaryws.com/websockets/v3?app_id=14372"
+    apiUrl = "wss://ws.binaryws.com/websockets/v3?app_id=####"
     ws = websocket.WebSocketApp(apiUrl,
                                 on_message=on_message_candle,
                                 on_open=on_open)

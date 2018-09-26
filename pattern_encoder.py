@@ -38,7 +38,7 @@ def encode_column_to_range_index(x, i=0, alpha=0.001):
 
 
 def decode_column_to_int(x):
-    return int(encoder_base.decode(x)) / float(encoder_base.decode("".rjust(len(x), 'C')))
+    return int(encoder_base.decode(x)) / float(encoder_base.decode("".rjust(len(x), 'D')))
 
 
 encode_column_to_range_index(-0.02)

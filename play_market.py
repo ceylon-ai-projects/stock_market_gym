@@ -23,13 +23,13 @@ interval = 1
 future_state = 4
 state_size = 3
 action_size = 3
-considering_steps = 12
+considering_steps = 15
 
-rsi_range = range(14, 15)
-tsi_range = range(14, 15)
-emi_range = range(12, 13)
-aroon_range = range(25, 26)
-dpo_range = range(20, 26)
+rsi_range = [14, 29, 58, 100]
+tsi_range = [14, 29, 58, 100]
+emi_range = [9, 11, 20, 100]
+aroon_range = [9, 13, 29, 50]
+dpo_range = [4, 5, 13, 35]
 
 data_csv = get_data(pair_name, interval)
 data_csv['Ct'] = data_csv.Close.shift(considering_steps)
@@ -68,9 +68,11 @@ series = series.apply(encode_column_to_range_index)
 df['P1'] = series
 df['P2'] = series
 df['P3'] = series
+df['P4'] = series
 #
 for back_step in range(2, (considering_steps - 1) + 1):
     df['P1'] += process_change_series(close_s, close_s.shift(back_step))
+
 #
 for back_step in range(2, 5):
     df['P2'] += process_change_series(close_s, close_s.shift(back_step))
@@ -79,12 +81,15 @@ for back_step in range(2, 5):
 for back_step in range(2, 4):
     df['P3'] += process_change_series(close_s, close_s.shift(back_step))
 
+for back_step in range(2, 10):
+    df['P4'] += process_change_series(close_s, close_s.shift(back_step))
 # print(df['P'])
 df.dropna(inplace=True)
 # print(df.values[-10:, -4:])
 df['P1'] = df.P1.apply(decode_column_to_int)
 df['P2'] = df.P2.apply(decode_column_to_int)
 df['P3'] = df.P3.apply(decode_column_to_int)
+df['P4'] = df.P3.apply(decode_column_to_int)
 # print(df.values[-10:, -4:])
 state_size = df.shape[1]
 
@@ -111,7 +116,7 @@ class RewardPlayer():
     # plt.axis([0, 1000, 0, 1])
 
     def play(self, index, value):
-        plt.scatter(index, value)
+        plt.scatter(index, value, s=2)
         plt.show()
         if index % 500 == 0:
             self.fig.savefig('results/foo_{}.png'.format(index))
@@ -140,10 +145,9 @@ class MarketAgent(Agent):
         print(self.model.summary())
 
     def after_init(self):
-        # self.build_model((1, self.state_size))
-        from keras.engine.saving import load_model
-
-        self.model = load_model(model_path + "fx_agent_rl__4")
+        self.build_model((1, self.state_size))
+        # from keras.engine.saving import load_model
+        # self.model = load_model(model_path + "fx_agent_rl__4")
 
     def update_policy(self, action, reward, state, state_next):
         target = np.zeros((self.action_size))
@@ -164,9 +168,9 @@ class MarketAgent(Agent):
         train_x = np.array(train_x)
         train_y = np.array(train_y)
         train_x = np.reshape(train_x, (train_x.shape[0], 1, self.state_size))
-        self.model.fit(train_x, train_y, verbose=0, batch_size=32)
+        self.model.fit(train_x, train_y, verbose=0, batch_size=512, epochs=50)
 
-        if self.train_itr % 5 == 0:
+        if self.itr_index % 5 == 0:
             prefix = self.itr_index % 5
             self.model.save(model_path + '' + self.name + "_{}".format(prefix))
 
@@ -203,7 +207,7 @@ class EURUSDMarket(MarketEnvironment):
 
         self.total_rewards += reward
         reward_value = (self.total_rewards / self.reward_cum_index)
-        if self.reward_player is not None and np.random.rand() > (1 - 0.05):
+        if self.reward_player is not None and np.random.rand() > (1 - 0.5):
             self.reward_player.play(self.reward_index, reward_value)
 
         if self.reward_index % 100 == 0:
@@ -218,10 +222,11 @@ class EURUSDMarket(MarketEnvironment):
 data_agent = CsvDataAgent()
 prediction_agent = MarketAgent("fx_agent_rl_",
                                state_size=state_size,
-                               gamma=0.95,
+                               gamma=0.5,
                                epsilon_decay=0.9,
                                max_mem_len=5e2,
-                               forget_rate=0.2)
+                               epsilon_min=1e-7,
+                               forget_rate=0.7)
 
 market_env = EURUSDMarket(agent=prediction_agent, data_agent=data_agent)
 while market_env.stop_command is not True:

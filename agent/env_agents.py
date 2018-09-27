@@ -27,6 +27,7 @@ class Agent():
         self.action_size = action_size
         self.train_agent = train_agent
         self.forget_rate = forget_rate
+        self.max_mem_len = max_mem_len
         self.__memory__ = deque(maxlen=int(max_mem_len))
         #
         self.after_init()
@@ -64,8 +65,13 @@ class Agent():
                 self.__train()
 
             # Forget Memory events
-            for f in range(int(len(self.__memory__) * self.forget_rate)):
+            for f in range(int(len(self.__memory__) * np.random.uniform(0, self.forget_rate, 1)[0])):
                 self.__memory__.popleft()
+
+            print(f"Epsilon = {self.epsilon}")
+            print(f"Train Itr = {self.train_itr}")
+            print(f"Max Memory Length = {self.max_mem_len}")
+            print(f"Memory Size = {len(self.__memory__)}")
         self.itr_index += 1
         # if random.random() > (1 - self.forget_rate):
         #     for f in range(int(len(self.__memory__) * self.forget_rate)):
